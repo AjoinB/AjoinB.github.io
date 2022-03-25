@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang = "en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Jet</title>
+    <SCRIPT SRC="../ganja.js"></SCRIPT>
+    <!--<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>-->
+
+
+</head>
+<body>
+  
+  <input onchange="genBunny(this)" type="file" id="input" accept=".obj"/>
+  <!--<progress value="0" max="100" id="progress-bar"></progress> -->
+  <div id="status"></div>
+  <script>  
+
+    function genBunny(input){
+
+        Algebra(3,0,1,()=>{ 
+
+        // Specify a point directly (trivectors specified with overloaded e-notation.)
+        
+        // Specify a point directly (trivectors specified with overloaded e-notation.)
+        var point = (x,y,z)=>!(1e0 + x*1e1 + y*1e2 + z*1e3);
+        var point2 = (X)=>!(1e0 + X[0]*1e1 + X[1]*1e2 + X[2]*1e3);
+        var line  = (...plucker)=>(plucker*[1e01,1e02,1e03,1e12,1e13,1e23]).Normalized;
+        var rotor = (P,a)=>Math.cos(a/2)+Math.sin(a/2)*P.Normalized;
+        var motor = (line,angle_or_distance)=>Math.E**(angle_or_distance/2 * line);
+        var l1 = line(1,0,0,0,0,0), l2 = line(0,1,0,0,0,0), l3 = line(0,0,1,0,0,0),
+            l12 = line(0,0,0,1,0,0), l23 = line(0,0,0,0,0,1);;
+
+        var scale = 4; 
+        
+        var forwardShift = .0;
+
+        const file = input.files[0];
+        
+        var extPts = [];
+        if (file.name == 'f-16w.obj'){
+            forwardShift = .05;
+            var nose = point2(scale*[0,0,0+forwardShift]);
+            var wtr  = point2(scale*[.0371517,.0004324,-.0678747+forwardShift]);
+            var wtf  = point2(scale*[-.0372964,.0004324,-.0678747+forwardShift]);
+            var tail = point2(scale*[0,.0284,-.107154+forwardShift]);
+            extPts = [nose,wtr,wtf,tail];
+        };
+     
+        var obj = (file,complete)=>{
+            var reader = new FileReader();
+            reader.readAsText(file);
+            reader.onload = e=>{
+                var t = reader.result.split('\n'),            
+                    v = t.filter(x=>x.match(/^v /i)), 
+                    f = t.filter(x=>x.match(/^f /i)).map(x=>x.split(/\s+/).slice(1,4).map(x=>parseInt(x))),
+                    p;              
+                complete(p,v,f);                                     // faces            
+            }
+            reader.onerror = function() {
+                //console.log('Error',reader.error);
+            };
+        } //End obj function
+    //  var  miniBlue = (motor(l2,1.2)*motor(l1,1.2)*rotor(1e23,Math.PI/2)*rotor(1e12,Math.PI/3)).Normalized;
+        var miniBlue = (motor(1.5*l2+2*l1,.5)*rotor(1e13,Math.PI/2)).Normalized;
+
+        var A = point(0,0,0);
+        var f1 = [], f2 = [], f3 = [], f4 = [], f5 = [], f6 = [], f7 = [];
+        var elements = [];
+
+
+        obj(file,(p,v,f)=>{
+     
+            var p = v.map(x=>point.apply(this,x.split(/\s+/).slice(1).map(x=>scale*parseFloat(x)))); //Note the                                                // points
+            p.map(x=>x[11]=+x[11]-forwardShift*scale);  //shift if jet
+            var faces = f.map(x=>x.map(x=>p[x-1]));     //faces
+            f1 = miniBlue>>>faces;
+            f2 = (motor(-2*l1,.5)).Normalized>>>f1;
+            //f3 = (motor(1e13,-Math.PI/2)*rotor(A,-Math.PI/200)).Normalized>>>f2;
+            f3 = (motor(-1*l2-1.5*l1,.5)*motor(1e13,-Math.PI/2)*motor(1e12,-Math.PI/2)).Normalized>>>f2;
+            f4 = (motor(l2,-.4)*motor(l12,-Math.PI/2)).Normalized>>>f3;
+            f5 = (motor(-1.*l2,.5)*motor(l12, -Math.PI/2)).Normalized>>>f4;
+            f6 = (motor(.5*l2,.5)*rotor(l23, Math.PI/2)).Normalized>>>f5;
+
+
+            const myObject = { extPts: extPts, faces:faces};
+            const myObjectString = JSON.stringify(myObject);
+            localStorage.setItem('objectData', myObjectString);
+
+            document.body.appendChild(this.graph(()=>{
+
+                // Animate cutting plane and camera
+               elements =  [0xff0000, A,
+                            0x00aa66, '<G fill-opacity="0.1">',...f1,
+                            0xaa0066,...f2,
+                            0x66aa00,...f3,
+                            0x000000,...f4,
+                            0xaa6600,...f5,l12,
+                            0x6600aa,...f6,l23
+                        ];//6
+                            
+
+                return elements;
+                //return [bunny_color,bunny,0x0000cc,nose,wtr,wtf,tail];//664422 chocolate ..... 0x888888,bunny,
+            },{lineWidth:1,pointRadius:.5,width:600, labels:true,height:620}));  
+            
+        });
+
+
+    }); //end Algebra
+
+    } //end genBunny
+        
+      
+  </script>
+</body>
+</html>
